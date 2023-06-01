@@ -1,0 +1,17 @@
+{
+    "version": 0.1,
+    "name": "",
+    "layout": {
+        "row": 2,
+        "column": 4
+    },
+    "source": [],
+    "mapping": {
+        "cells": [{
+            "id": 0,
+            "i": [],
+            "o": [],
+            "s": []
+        }]
+    }
+}
