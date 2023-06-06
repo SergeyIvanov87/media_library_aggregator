@@ -2,8 +2,8 @@
     "version": 0.1,
     "name": "",
     "layout": {
-        "row": 2,
-        "column": 4
+        "rows": 0,
+        "columns": 0
     },
     "source": [],
     "mapping": {

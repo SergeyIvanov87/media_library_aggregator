@@ -16,8 +16,8 @@ import layout_loader
 
 # Input data
 name = "2"  # input("Enter the layout name: ")
-rows = int("2")  # int(input("Enter the layout dimensions[row]: "))
-columns = int("2")  # int(input("Enter the layout dimensions[column]: "))
+rows = int("2")  # int(input("Enter the layout dimensions[rows]: "))
+columns = int("2")  # int(input("Enter the layout dimensions[columns]: "))
 
 source_path = (
     # input("Enter path to objects: "),
@@ -53,4 +53,6 @@ objects_with_sounds = collector_utils.process_objects_attributes(
 print(f"\nFound objects with sounds:\n{objects_with_sounds}")
 print("\n")
 
-layout_loader.save_layout_as_json(new_layout_json, objects, objects_with_images, objects_with_sounds)
+layout_loader.save_layout_as_json(
+    new_layout_json, objects, objects_with_images, objects_with_sounds
+)
