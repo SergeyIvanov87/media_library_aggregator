@@ -12,7 +12,7 @@ class ObjectRepresentative(tkinter.ttk.Button):
     images = []
     photo_images = []
 
-    def __init__(self, parent, dimensions, description_list, images_list, sounds_list):
+    def __init__(self, parent, dimensions, images_list):
         self.images = [Image.open(pathToImage) for pathToImage in images_list]
         self.images = [img.resize(dimensions, Image.LANCZOS) for img in self.images]
 
@@ -22,7 +22,6 @@ class ObjectRepresentative(tkinter.ttk.Button):
         tkinter.ttk.Button.__init__(
             self,
             parent,
-            text=description_list[0],
             width=dimensions[0],
             image=cur_image,
             command=self.on_click,
@@ -36,6 +35,91 @@ class ObjectRepresentative(tkinter.ttk.Button):
         self.photo_images.append(next_image)
         return next_image
 
+class DescriptionRepresentative(tkinter.Toplevel):
+    info_labels = []
+    def __init__(self, info_files_list):
+        tkinter.Toplevel.__init__(self)
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
+        self.info_book = ttk.Notebook(self)
+        self.info_book.grid_rowconfigure(0, weight=1)
+        self.info_book.grid_columnconfigure(0, weight=1)
+        self.info_book.pack(fill='both', expand=True)
+
+        self.info_labels = [tkinter.Label(self.info_book, text=info) for info in info_files_list]
+        for i in self.info_labels:
+            i.grid_rowconfigure(0, weight=1)
+            i.grid_columnconfigure(0, weight=0)
+            i.grid_columnconfigure(1, weight=1)
+            i.pack(fill='both', expand=True)
+
+            self.info_book.add(i)
+
+        self.info_book.grid(row=0, column=0)
+
+        self.close_button = ttk.Button(self, text="Close", command=self.close)
+        self.close_button.grid(row=1, column=0)
+
+        #self.parent = parent
+        self.acquire_modality()
+
+    def close(self):
+        self.release_modality()
+
+    def __del__(self):
+        self.release_modality()
+
+    def acquire_modality(self):
+        """
+        make windows modal and block input for parent windows
+        until this child windows interaction finishes
+        """
+        self.wait_visibility()
+        self.grab_set()
+        #self.transient(self.parent)
+
+    def release_modality(self):
+        self.grab_release()
+        self.destroy()
+
+class ObjectFrame(ttk.Frame):
+    info_list = []
+    sound_files_list = []
+    def __init__(self, parent, dimensions, description_list, images_list, sounds_list):
+        ttk.Frame.__init__(self, parent)
+
+        self.info_list = description_list
+        self.sound_files_list = sounds_list
+
+        self.object_view = ObjectRepresentative(self, dimensions, images_list)
+        self.object_view.grid(row=0, column=0)
+
+        self.controls_frame = ttk.Frame(self)
+        self.controls_frame.grid(row=1,column=0)
+
+        # create 'Show Info' button if necessary
+        if len(self.info_list):
+            self.description_show_button = tkinter.ttk.Button(self.controls_frame,
+                text="Show Info",
+                command=self.on_description_click
+            )
+            self.description_show_button.grid(row=0, column=0)
+
+        # create 'Play Sound' button if necessary
+        if len(self.sound_files_list):
+            self.play_sound_button = tkinter.ttk.Button(self.controls_frame,
+                text="|>",
+                command=self.on_play_sound_click
+            )
+            self.play_sound_button.grid(row=0, column=1)
+
+    def on_description_click(self):
+        description_window = DescriptionRepresentative(self.info_list)
+        self.wait_window(description_window)
+
+    def on_play_sound_click(self):
+        print("SSSSSS")
 
 class MainLayoutWidget(tkinter.Tk):
     object_cells = []
@@ -74,7 +158,7 @@ class MainLayoutWidget(tkinter.Tk):
             for c in range(0, columns):
                 cell = cells_matrix[r][c]
                 self.object_cells[r].append(
-                    ObjectRepresentative(
+                    ObjectFrame(
                         main_frame,
                         (cell_width, cell_height),
                         cell["o"],
