@@ -15,17 +15,14 @@ import layout_loader
 
 
 # Input data
-name = "2"  # input("Enter the layout name: ")
-rows = int("2")  # int(input("Enter the layout dimensions[rows]: "))
-columns = int("2")  # int(input("Enter the layout dimensions[columns]: "))
+name = input("Enter the layout name: ")
+rows = int(input("Enter the layout dimensions[rows]: "))
+columns = int(input("Enter the layout dimensions[columns]: "))
 
 source_path = (
-    # input("Enter path to objects: "),
-    "/home/user/layout",
-    # input("Enter path to pictures: "),
-    "/home/user/layout",
-    # input("Enter path to sounds: "),
-    "/home/user/layout",
+     input("Enter path to objects: "),
+     input("Enter path to pictures: "),
+     input("Enter path to sounds: "),
 )
 
 for path in source_path:

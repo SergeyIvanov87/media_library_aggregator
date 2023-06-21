@@ -52,6 +52,8 @@ def process_objects(objects_path):
     ]
     return [i for i in files_list if is_object(i)]
 
+def file_name_to_object_name(filename):
+    return os.path.splitext(os.path.basename(filename))[0]
 
 def process_objects_attributes(
     attributes_path, attribute_match_condition, objects_list
@@ -63,7 +65,7 @@ def process_objects_attributes(
     object_attrfile_path = {}
 
     entry_list = [os.path.join(attributes_path, f) for f in os.listdir(attributes_path)]
-    object_name = [os.path.splitext(os.path.basename(o))[0] for o in objects_list]
+    object_name = [file_name_to_object_name(o) for o in objects_list]
     # find attribute file path by regexp matching to an object_name pattern
     search_pattern = r"\.).*)|(.*(\/".join(object_name)
     search_pattern = r"(.*(\/" + search_pattern + "\.).*)"

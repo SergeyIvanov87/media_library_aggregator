@@ -14,8 +14,8 @@ def create_layout_cell(cell_id, object_key, images_dict, sounds_dict):
     """
     Transform object and its attributes into JSON cell object
     """
-    sounds_list = sounds_dict[object_key]
-    images_list = images_dict[object_key]
+    sounds_list = sounds_dict[object_key] if object_key in sounds_dict.keys() else []
+    images_list = images_dict[object_key] if object_key in images_dict.keys() else []
     json_str = (
         "{"
         + f'"id": {cell_id}, "i": {images_list}, "o": ["{object_key}"], "s": {sounds_list}'

@@ -1,13 +1,19 @@
 #!/usr/bin/python
 
 import json
+from playsound import playsound
+import multiprocessing
+
 import tkinter
 from tkinter import ttk
 from PIL import Image, ImageTk
 
 import layout_loader
+from collector_utils import file_name_to_object_name
 
-
+"""
+TODO playsound module required
+"""
 class ObjectRepresentative(tkinter.ttk.Button):
     images = []
     photo_images = []
@@ -22,7 +28,7 @@ class ObjectRepresentative(tkinter.ttk.Button):
         tkinter.ttk.Button.__init__(
             self,
             parent,
-            width=dimensions[0],
+#            width=dimensions[0],
             image=cur_image,
             command=self.on_click,
         )
@@ -31,6 +37,8 @@ class ObjectRepresentative(tkinter.ttk.Button):
         self.config(image=self.__extract_next_photo_image__())
 
     def __extract_next_photo_image__(self):
+        if not self.photo_images:
+            return None
         next_image = self.photo_images.pop(0)
         self.photo_images.append(next_image)
         return next_image
@@ -83,6 +91,13 @@ class DescriptionRepresentative(tkinter.Toplevel):
         self.grab_release()
         self.destroy()
 
+global_playsound_process = None
+
+
+#TODO use this flag to turn on or turn off None sound, If focused widget is the same - then turn on None, if required. Otherwiee skip None in list
+# TODO think about change play button caption from `Play` to `Stop`.
+global_playsound_process_focused_object = None
+
 class ObjectFrame(ttk.Frame):
     info_list = []
     sound_files_list = []
@@ -91,12 +106,27 @@ class ObjectFrame(ttk.Frame):
 
         self.info_list = description_list
         self.sound_files_list = sounds_list
-
+        if len(self.sound_files_list):
+            self.sound_files_list.append(None) #stop play sound marker
+        print(self.sound_files_list)
         self.object_view = ObjectRepresentative(self, dimensions, images_list)
         self.object_view.grid(row=0, column=0)
 
         self.controls_frame = ttk.Frame(self)
         self.controls_frame.grid(row=1,column=0)
+
+        # always create 'Description' Label
+        object_name = "UNKNOWN"
+        control_frame_widget_column_index = 0
+        if len(self.info_list):
+            object_name = file_name_to_object_name(self.info_list[0])
+
+        print(object_name)
+        self.description_label = tkinter.ttk.Label(self.controls_frame, text=object_name)
+        self.description_label.grid(row=0, column=control_frame_widget_column_index,
+                                    padx = 5, pady = 5, ipadx = 5, ipady = 5,\
+                                    sticky='w')
+        control_frame_widget_column_index = control_frame_widget_column_index + 1
 
         # create 'Show Info' button if necessary
         if len(self.info_list):
@@ -104,7 +134,8 @@ class ObjectFrame(ttk.Frame):
                 text="Show Info",
                 command=self.on_description_click
             )
-            self.description_show_button.grid(row=0, column=0)
+            self.description_show_button.grid(row=0, column=control_frame_widget_column_index)
+            control_frame_widget_column_index = control_frame_widget_column_index + 1
 
         # create 'Play Sound' button if necessary
         if len(self.sound_files_list):
@@ -112,14 +143,30 @@ class ObjectFrame(ttk.Frame):
                 text="|>",
                 command=self.on_play_sound_click
             )
-            self.play_sound_button.grid(row=0, column=1)
+            self.play_sound_button.grid(row=0, column=control_frame_widget_column_index)
+            control_frame_widget_column_index = control_frame_widget_column_index + 1
 
     def on_description_click(self):
         description_window = DescriptionRepresentative(self.info_list)
         self.wait_window(description_window)
 
     def on_play_sound_click(self):
-        print("SSSSSS")
+        global global_playsound_process
+        if global_playsound_process:
+            global_playsound_process.terminate()
+
+        next_song = self.__extract_next_sound__()
+        if not next_song is None:
+            global_playsound_process = multiprocessing.Process(target=playsound, args=(next_song,))
+            global_playsound_process.start()
+
+    def __extract_next_sound__(self):
+        if not self.sound_files_list:
+            return None
+        next_sound = self.sound_files_list.pop(0)
+        self.sound_files_list.append(next_sound)
+        print(next_sound)
+        return next_sound
 
 class MainLayoutWidget(tkinter.Tk):
     object_cells = []
@@ -142,15 +189,16 @@ class MainLayoutWidget(tkinter.Tk):
 
         cell_width = int(main_frame.winfo_reqwidth() / rows)
         cell_height = int(main_frame.winfo_reqheight() / columns)
-
+        print(f"column: {columns}, rows: {rows}")
         cells = json_layout["mapping"]["cells"]
         cells_column = [json.loads("{}") for c in range(0, columns)]
         cells_matrix = [list(cells_column) for r in range(0, rows)]
 
         for c in cells:
             cell_id = c["id"]
-            row = int(cell_id / rows)
-            column = int(cell_id % rows)
+            row = int(cell_id / columns)
+            column = int(cell_id % columns)
+            print(f"cell_id: {cell_id}, row: {row}, column: {column}")
             cells_matrix[row][column] = c
 
         for r in range(0, rows):
@@ -171,8 +219,8 @@ class MainLayoutWidget(tkinter.Tk):
                 )  # , sticky ='w'+'n'+'e'+'s')
 
 
-layout_name = "2.json"  # input("Please specify a layout name: ")
+layout_name = input("Please specify a layout name: ")
+layout_name = layout_name + ".json"
 layout_json = layout_loader.load_layout_as_json(layout_name)
-
 root = MainLayoutWidget(layout_json)
 root.mainloop()
