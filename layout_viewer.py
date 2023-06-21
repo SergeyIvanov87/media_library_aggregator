@@ -14,6 +14,31 @@ from collector_utils import file_name_to_object_name
 """
 TODO playsound module required
 """
+class PlaysoundCtrl:
+    playsound_process = None
+    last_client_stop_callback = None
+    last_client_id = None
+
+    def stop(self, client_id):
+        if self.playsound_process:
+            self.playsound_process.terminate()
+
+        if not self.last_client_id  == client_id:
+            if self.last_client_stop_callback:
+                self.last_client_stop_callback()
+
+            self.last_client_stop_callback = None;
+            self.last_client_id = None
+
+
+    def start(self, sound_file, client_id, client_callback):
+        if sound_file is not None:
+            self.playsound_process = multiprocessing.Process(target=playsound, args=(sound_file,))
+            self.playsound_process.start()
+            self.last_client_stop_callback = client_callback
+            self.last_client_id = client_id
+
+
 class ObjectRepresentative(tkinter.ttk.Button):
     images = []
     photo_images = []
@@ -28,7 +53,6 @@ class ObjectRepresentative(tkinter.ttk.Button):
         tkinter.ttk.Button.__init__(
             self,
             parent,
-#            width=dimensions[0],
             image=cur_image,
             command=self.on_click,
         )
@@ -69,7 +93,6 @@ class DescriptionRepresentative(tkinter.Toplevel):
         self.close_button = ttk.Button(self, text="Close", command=self.close)
         self.close_button.grid(row=1, column=0)
 
-        #self.parent = parent
         self.acquire_modality()
 
     def close(self):
@@ -85,24 +108,21 @@ class DescriptionRepresentative(tkinter.Toplevel):
         """
         self.wait_visibility()
         self.grab_set()
-        #self.transient(self.parent)
 
     def release_modality(self):
         self.grab_release()
         self.destroy()
 
-global_playsound_process = None
-
-
-#TODO use this flag to turn on or turn off None sound, If focused widget is the same - then turn on None, if required. Otherwiee skip None in list
-# TODO think about change play button caption from `Play` to `Stop`.
-global_playsound_process_focused_object = None
 
 class ObjectFrame(ttk.Frame):
     info_list = []
     sound_files_list = []
-    def __init__(self, parent, dimensions, description_list, images_list, sounds_list):
+    parent_sound_controller = None
+
+    def __init__(self, parent, sound_controller, dimensions, description_list, images_list, sounds_list):
         ttk.Frame.__init__(self, parent)
+
+        self.parent_sound_controller = sound_controller
 
         self.info_list = description_list
         self.sound_files_list = sounds_list
@@ -140,7 +160,7 @@ class ObjectFrame(ttk.Frame):
         # create 'Play Sound' button if necessary
         if len(self.sound_files_list):
             self.play_sound_button = tkinter.ttk.Button(self.controls_frame,
-                text="|>",
+                text="Play",
                 command=self.on_play_sound_click
             )
             self.play_sound_button.grid(row=0, column=control_frame_widget_column_index)
@@ -151,25 +171,47 @@ class ObjectFrame(ttk.Frame):
         self.wait_window(description_window)
 
     def on_play_sound_click(self):
-        global global_playsound_process
-        if global_playsound_process:
-            global_playsound_process.terminate()
+        # stop any other sounds, even if it was started by another ObjectFrame instance (last client_id)
+        self.parent_sound_controller.stop(self)
 
         next_song = self.__extract_next_sound__()
-        if not next_song is None:
-            global_playsound_process = multiprocessing.Process(target=playsound, args=(next_song,))
-            global_playsound_process.start()
+        if next_song is not None:
+            # start new sound and register own instance as client_id
+            self.parent_sound_controller.start(next_song, self, self.rewind_sound_list_to_beginning)
+
+    def rewind_sound_list_to_beginning(self):
+        """
+        Callback for PlaysoundCtrl.
+        Once 'stop' requested by another ObjectFrame instance (new clinet_id)
+        then we need to rewind own sound list into beginning
+        And show 'Stop' caption for `self.play_sound_button`
+        """
+        while True:
+            if not self.__extract_next_sound__():
+                break
 
     def __extract_next_sound__(self):
         if not self.sound_files_list:
             return None
         next_sound = self.sound_files_list.pop(0)
         self.sound_files_list.append(next_sound)
-        print(next_sound)
+
+        # change sound button caption
+        if next_sound is not None:
+            self.__change_sound_button_caption("Playing..." if self.__is_next_sound__() else "Stop")
+        else:
+            self.__change_sound_button_caption("Play" if self.__is_next_sound__() else "Stop")
         return next_sound
+
+    def __is_next_sound__(self):
+        return self.sound_files_list[0] is not None
+
+    def __change_sound_button_caption(self, caption):
+        self.play_sound_button.config(text=caption)
 
 class MainLayoutWidget(tkinter.Tk):
     object_cells = []
+    sound_ctrl = PlaysoundCtrl()
 
     def __init__(self, json_layout):
         tkinter.Tk.__init__(self)
@@ -208,6 +250,7 @@ class MainLayoutWidget(tkinter.Tk):
                 self.object_cells[r].append(
                     ObjectFrame(
                         main_frame,
+                        self.sound_ctrl,
                         (cell_width, cell_height),
                         cell["o"],
                         cell["i"],
